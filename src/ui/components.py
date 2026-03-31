@@ -287,6 +287,9 @@ def wizard_paso3_data():
             from io import BytesIO
             import pandas as pd
             from src.utils.text import normalizar_texto
+            import sys
+            
+            print(f"[DEBUG PASO3] Cargando {len(archivos)} archivos en paso 3", file=sys.stderr)
             
             for archivo in archivos:
                 df_raw = pd.read_excel(BytesIO(archivo.getvalue())) if archivo.name.endswith('.xlsx') else pd.read_csv(BytesIO(archivo.getvalue()))
@@ -308,14 +311,21 @@ def wizard_paso3_data():
                 
                 if año_predominante:
                     archivos_pricelabs[int(año_predominante)] = archivo
+                    print(f"[DEBUG PASO3] ✓ {archivo.name} → Año {año_predominante}", file=sys.stderr)
                     st.success(f"✅ {archivo.name} → **Año {año_predominante}** ({len(df_raw)} filas)")
                 else:
+                    print(f"[DEBUG PASO3] ✗ {archivo.name} → No se pudo detectar año", file=sys.stderr)
                     st.warning(f"⚠️ {archivo.name} → No se pudo detectar el año")
             
             st.session_state["wiz_pricelabs_archivos"] = archivos_pricelabs
+            print(f"[DEBUG PASO3] Guardado en session_state: {list(archivos_pricelabs.keys())}", file=sys.stderr)
         except Exception as e:
             st.error(f"❌ Error procesando archivos: {e}")
+            print(f"[DEBUG PASO3] Excepción: {e}", file=sys.stderr)
+            import traceback
+            print(traceback.format_exc(), file=sys.stderr)
     elif archivos_pricelabs:
+        print(f"[DEBUG PASO3] Archivos ya cargados previamente: {list(archivos_pricelabs.keys())}", file=sys.stderr)
         st.markdown("#### 📋 Archivos previsamente cargados:")
         años_cargados = sorted(archivos_pricelabs.keys())
         for año in años_cargados:
@@ -380,6 +390,9 @@ def wizard_paso5_estrategia():
     markups = st.session_state.get("wiz_markups", {})
     df_prev = st.session_state.wizard_df_limpio
     archivos_pl = st.session_state.get("wiz_pricelabs_archivos", {})
+    
+    import sys
+    print(f"[DEBUG PASO5] Archivos en session_state: {list(archivos_pl.keys()) if archivos_pl else 'NINGUNO'}", file=sys.stderr)
 
     with st.expander("📋 Resumen antes de guardar", expanded=True):
         c1, c2, c3 = st.columns(3)
@@ -404,6 +417,10 @@ def wizard_paso5_estrategia():
             try:
                 from src.utils.files import guardar_pricelabs_excel, default_empresa_config, cargar_config, guardar_config, invalidar_config
                 from src.utils.company_data import guardar_markups_empresa
+                import sys
+                
+                print(f"[DEBUG PASO5_SAVE] Iniciando guardado...", file=sys.stderr)
+                print(f"[DEBUG PASO5_SAVE] Archivos a guardar: {len(archivos_pl)} años", file=sys.stderr)
                 
                 config = cargar_config()
                 if empresa_id not in config:
@@ -426,7 +443,11 @@ def wizard_paso5_estrategia():
                 
                 # Guardar PriceLabs archivos si existen
                 if archivos_pl:
-                    guardar_pricelabs_excel(empresa_id, list(archivos_pl.values()))
+                    archivos_list = list(archivos_pl.values())
+                    print(f"[DEBUG PASO5_SAVE] Pasando {len(archivos_list)} archivos a guardar_pricelabs_excel", file=sys.stderr)
+                    guardar_pricelabs_excel(empresa_id, archivos_list)
+                else:
+                    print(f"[DEBUG PASO5_SAVE] Sin archivos de PriceLabs para guardar", file=sys.stderr)
                 
                 invalidar_config()
                 st.session_state.pop("wiz_desc_rows", None)
@@ -446,6 +467,8 @@ def wizard_paso5_estrategia():
             except Exception as e:
                 st.error(f"❌ Error al guardar: {e}")
                 import traceback
+                print(f"[DEBUG PASO5_SAVE] Excepción: {e}", file=sys.stderr)
+                print(traceback.format_exc(), file=sys.stderr)
                 st.error(traceback.format_exc())
 
     st.markdown('</div>', unsafe_allow_html=True)
