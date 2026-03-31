@@ -132,6 +132,7 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
     Returns:
         bool: True if at least one file was saved successfully, False otherwise
     """
+    import sys
     config = cargar_config()
     if empresa_id not in config:
         config[empresa_id] = default_empresa_config(pretty_name_from_slug(empresa_id), f"{empresa_id}.csv")
@@ -139,6 +140,8 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
     pricelabs_files = {}
     timestamps = {}
     procesados = {}  # NEW: Store processed DataFrames for session_state
+    
+    print(f"[DEBUG] guardar_pricelabs_excel: Procesando {len(archivos)} archivos para {empresa_id}", file=sys.stderr)
     
     for archivo in archivos:
         try:
@@ -149,6 +152,8 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
             df_raw = pd.read_excel(BytesIO(archivo.getvalue()))
             year_detectado = _detectar_anyo_archivo(df_raw)
             
+            print(f"[DEBUG] Archivo {archivo.name}: Año detectado = {year_detectado}", file=sys.stderr)
+            
             if year_detectado is None:
                 st.warning(f"⚠️ No se pudo detectar el año en {archivo.name}. Se saltará.")
                 continue
@@ -157,8 +162,10 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
             try:
                 df_procesado = procesar_pricelabs_excel(df_raw, archivo.name, year_detectado)
                 procesados[year_detectado] = df_procesado
+                print(f"[DEBUG] ✓ Procesado {archivo.name} para año {year_detectado}: {df_procesado.shape[0]} filas", file=sys.stderr)
             except Exception as e:
                 st.warning(f"⚠️ No se pudo procesar {archivo.name}: {e}")
+                print(f"[DEBUG] ✗ Error procesando {archivo.name}: {e}", file=sys.stderr)
                 # Still save the raw file even if processing fails
             
             # Nombre seguro para el archivo
@@ -174,6 +181,9 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
             timestamps[str(year_detectado)] = os.path.getmtime(ruta)
         except Exception as e:
             st.warning(f"❌ Error procesando {archivo.name}: {e}")
+            print(f"[DEBUG] ✗ Excepción en archivo {archivo.name}: {e}", file=sys.stderr)
+            import traceback
+            print(traceback.format_exc(), file=sys.stderr)
             continue
     
     if pricelabs_files:
@@ -184,11 +194,15 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
         # NEW: Cache processed DataFrames in session_state for cloud environments
         if procesados:
             st.session_state[f"pricelabs_data_{empresa_id}"] = procesados
+            print(f"[DEBUG] ✓ Cacheado en session_state: {list(procesados.keys())}", file=sys.stderr)
+        else:
+            print(f"[DEBUG] ⚠ No hay DataFrames procesados para cachear (solo se guardó a disco)", file=sys.stderr)
         
         # Limpiar cachés
         detectar_cambios_pricelabs.clear()
         return True
     
+    print(f"[DEBUG] ✗ No se guardó ningún archivo", file=sys.stderr)
     return False
 
 
@@ -233,19 +247,28 @@ def cargar_pricelabs_excel(empresa_id: str) -> dict:
         Dictionary with format {year: dataframe} for all stored files
         Example: {2025: df_2025, 2026: df_2026, 2027: df_2027}
     """
+    import sys
     import streamlit as st
     
-    # PRIMERO: Intentar leer del session_state (para Streamlit Cloud)
     session_key = f"pricelabs_data_{empresa_id}"
+    
+    # PRIMERO: Intentar leer del session_state (para Streamlit Cloud)
     if session_key in st.session_state:
         cached_data = st.session_state[session_key]
         if cached_data and isinstance(cached_data, dict):
+            print(f"[DEBUG] cargar_pricelabs_excel: Encontrado en session_state: {list(cached_data.keys())}", file=sys.stderr)
             return cached_data
+        else:
+            print(f"[DEBUG] cargar_pricelabs_excel: session_state['{session_key}'] existe pero está vacío o inválido", file=sys.stderr)
+    else:
+        print(f"[DEBUG] cargar_pricelabs_excel: No encontrado en session_state (key: '{session_key}')", file=sys.stderr)
     
     # SEGUNDA OPCIÓN: Leer del disco (para localhost)
+    print(f"[DEBUG] cargar_pricelabs_excel: Buscando en disco...", file=sys.stderr)
     config = cargar_config()
     empresa_config = config.get(empresa_id, {})
     pricelabs_files = empresa_config.get("pricelabs_files", {})
+    print(f"[DEBUG] Archivos en config: {pricelabs_files}", file=sys.stderr)
     
     resultado = {}
     for year, nombre_archivo in pricelabs_files.items():
@@ -254,12 +277,19 @@ def cargar_pricelabs_excel(empresa_id: str) -> dict:
             try:
                 df = pd.read_excel(ruta)
                 resultado[int(year)] = df
-            except Exception:
+                print(f"[DEBUG] Cargado del disco: {nombre_archivo} ({df.shape[0]} filas)", file=sys.stderr)
+            except Exception as e:
+                print(f"[DEBUG] Error cargando {nombre_archivo}: {e}", file=sys.stderr)
                 pass
+        else:
+            print(f"[DEBUG] Archivo no existe: {ruta}", file=sys.stderr)
     
     # Guardar en session_state para futuros accesos
     if resultado:
         st.session_state[session_key] = resultado
+        print(f"[DEBUG] Cacheado en session_state desde disco: {list(resultado.keys())}", file=sys.stderr)
+    else:
+        print(f"[DEBUG] No se encontró ningún archivo en disco", file=sys.stderr)
     
     return resultado
 
