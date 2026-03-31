@@ -123,6 +123,7 @@ def ruta_csv_empresa(empresa_id: str) -> Path:
 def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
     """
     Save multiple PriceLabs Excel files to disk with auto-detection of years.
+    Also processes and caches DataFrames in session_state for cloud compatibility.
     
     Args:
         empresa_id: Company ID
@@ -137,10 +138,13 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
     
     pricelabs_files = {}
     timestamps = {}
+    procesados = {}  # NEW: Store processed DataFrames for session_state
     
     for archivo in archivos:
         try:
             from io import BytesIO
+            from src.utils.pricelabs import procesar_pricelabs_excel
+            
             # Auto-detect year from the data
             df_raw = pd.read_excel(BytesIO(archivo.getvalue()))
             year_detectado = _detectar_anyo_archivo(df_raw)
@@ -148,6 +152,14 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
             if year_detectado is None:
                 st.warning(f"⚠️ No se pudo detectar el año en {archivo.name}. Se saltará.")
                 continue
+            
+            # NEW: Process the DataFrame for cloud compatibility
+            try:
+                df_procesado = procesar_pricelabs_excel(df_raw, archivo.name, year_detectado)
+                procesados[year_detectado] = df_procesado
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo procesar {archivo.name}: {e}")
+                # Still save the raw file even if processing fails
             
             # Nombre seguro para el archivo
             nombre_archivo = f"{empresa_id}_pricelabs_{year_detectado}.xlsx"
@@ -168,6 +180,10 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
         config[empresa_id]["pricelabs_files"] = pricelabs_files
         config[empresa_id]["pricelabs_timestamps"] = timestamps
         guardar_config(config)
+        
+        # NEW: Cache processed DataFrames in session_state for cloud environments
+        if procesados:
+            st.session_state[f"pricelabs_data_{empresa_id}"] = procesados
         
         # Limpiar cachés
         detectar_cambios_pricelabs.clear()
@@ -211,11 +227,22 @@ def _detectar_anyo_archivo(df: pd.DataFrame) -> int:
 def cargar_pricelabs_excel(empresa_id: str) -> dict:
     """
     Load stored PriceLabs Excel files.
+    Priority: session_state → disk files
     
     Returns:
         Dictionary with format {year: dataframe} for all stored files
         Example: {2025: df_2025, 2026: df_2026, 2027: df_2027}
     """
+    import streamlit as st
+    
+    # PRIMERO: Intentar leer del session_state (para Streamlit Cloud)
+    session_key = f"pricelabs_data_{empresa_id}"
+    if session_key in st.session_state:
+        cached_data = st.session_state[session_key]
+        if cached_data and isinstance(cached_data, dict):
+            return cached_data
+    
+    # SEGUNDA OPCIÓN: Leer del disco (para localhost)
     config = cargar_config()
     empresa_config = config.get(empresa_id, {})
     pricelabs_files = empresa_config.get("pricelabs_files", {})
@@ -229,6 +256,10 @@ def cargar_pricelabs_excel(empresa_id: str) -> dict:
                 resultado[int(year)] = df
             except Exception:
                 pass
+    
+    # Guardar en session_state para futuros accesos
+    if resultado:
+        st.session_state[session_key] = resultado
     
     return resultado
 
