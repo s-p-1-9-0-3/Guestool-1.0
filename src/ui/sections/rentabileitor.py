@@ -479,29 +479,18 @@ def section_rentabileitor(
         st.metric("📊", f"{year_actual} vs {year_anterior}")
         
         # ================== VALIDACIÓN EN VIVO DE FECHAS ==================
-        st.markdown("### 📋 Períodos")
+        # Validar ambos años
+        dias_actual = (end_date - start_date).days + 1 if start_date < end_date and (end_date - start_date).days <= 365 else None
+        dias_anterior = (end_anterior - start_anterior).days + 1 if start_anterior < end_anterior and (end_anterior - start_anterior).days <= 365 else None
         
-        col_val1, col_val2 = st.columns([1, 1], gap="small")
-        
-        with col_val1:
-            # Validar año actual
-            if start_date >= end_date:
-                st.error(f"{year_actual}: Inicio > Fin")
-            elif (end_date - start_date).days > 365:
-                st.warning(f"{year_actual}: >365 días")
-            else:
-                dias_actual = (end_date - start_date).days + 1
-                st.success(f"✅ {year_actual}: {dias_actual}d")
-        
-        with col_val2:
-            # Validar año anterior
-            if start_anterior >= end_anterior:
-                st.error(f"{year_anterior}: Inicio > Fin")
-            elif (end_anterior - start_anterior).days > 365:
-                st.warning(f"{year_anterior}: >365 días")
-            else:
-                dias_anterior = (end_anterior - start_anterior).days + 1
-                st.success(f"✅ {year_anterior}: {dias_anterior}d")
+        # Mostrar en una línea compacta
+        if dias_actual and dias_anterior:
+            st.markdown(f"📋 **Comparando:** {year_actual} ({dias_actual}d) vs {year_anterior} ({dias_anterior}d)")
+        else:
+            if not dias_actual:
+                st.error(f"⚠️ {year_actual}: fechas inválidas")
+            if not dias_anterior:
+                st.error(f"⚠️ {year_anterior}: fechas inválidas")
         
         # Display data - Visualización minimalista
         st.markdown(f"### 📊 Comparativa {year_actual} vs {year_anterior}")
