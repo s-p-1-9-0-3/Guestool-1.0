@@ -1,0 +1,30 @@
+# Environment
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit_cache/
+.streamlit/.cache/
+
+# Data (optional - uncomment if needed)
+# datos/*.xlsx
+# config/*.json
+
+# Backups
+backups/app_todo_ok*.py

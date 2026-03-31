@@ -1,0 +1,141 @@
+{
+  "living4malaga_standard": {
+    "nombre": "Living4Malaga - Standard",
+    "archivo_csv": "living4malaga_standard.csv",
+    "markups": {
+      "Airbnb": 75.0,
+      "Booking": 155.0,
+      "Web": 67.0
+    },
+    "descuentos": [
+      {
+        "Desde": 1,
+        "Hasta": 1,
+        "Descuento (%)": 0.0
+      },
+      {
+        "Desde": 2,
+        "Hasta": 2,
+        "Descuento (%)": 45.0
+      },
+      {
+        "Desde": 3,
+        "Hasta": 3,
+        "Descuento (%)": 47.0
+      },
+      {
+        "Desde": 4,
+        "Hasta": 4,
+        "Descuento (%)": 49.0
+      },
+      {
+        "Desde": 5,
+        "Hasta": 5,
+        "Descuento (%)": 51.0
+      },
+      {
+        "Desde": 6,
+        "Hasta": 99,
+        "Descuento (%)": 53.0
+      }
+    ],
+    "pricelabs_2025_file": "living4malaga_standard_pricelabs_2025.xlsx",
+    "pricelabs_2026_file": "living4malaga_standard_pricelabs_2026.xlsx",
+    "pricelabs_timestamps": {
+      "2022": 1774943709.6351476,
+      "2023": 1774943711.2040408,
+      "2024": 1774943712.819708,
+      "2025": 1774943714.4170606,
+      "2026": 1774943716.0205066,
+      "2027": 1774943717.544583
+    },
+    "pricelabs_files": {
+      "2022": "living4malaga_standard_pricelabs_2022.xlsx",
+      "2023": "living4malaga_standard_pricelabs_2023.xlsx",
+      "2024": "living4malaga_standard_pricelabs_2024.xlsx",
+      "2025": "living4malaga_standard_pricelabs_2025.xlsx",
+      "2026": "living4malaga_standard_pricelabs_2026.xlsx",
+      "2027": "living4malaga_standard_pricelabs_2027.xlsx"
+    }
+  },
+  "inmalaga": {
+    "nombre": "Inmalaga",
+    "archivo_csv": "inmalaga.csv",
+    "markups": {
+      "Airbnb": -2.0,
+      "Booking": 39.0,
+      "Web": -7.0
+    },
+    "descuentos": [
+      {
+        "Desde": 1,
+        "Hasta": 3,
+        "Descuento (%)": 0.0
+      },
+      {
+        "Desde": 4,
+        "Hasta": 5,
+        "Descuento (%)": 7.0
+      },
+      {
+        "Desde": 6,
+        "Hasta": 6,
+        "Descuento (%)": 15.0
+      },
+      {
+        "Desde": 7,
+        "Hasta": 13,
+        "Descuento (%)": 16.0
+      },
+      {
+        "Desde": 14,
+        "Hasta": 365,
+        "Descuento (%)": 17.0
+      }
+    ],
+    "pricelabs_files": {
+      "2022": "inmalaga_pricelabs_2022.xlsx",
+      "2023": "inmalaga_pricelabs_2023.xlsx",
+      "2024": "inmalaga_pricelabs_2024.xlsx",
+      "2025": "inmalaga_pricelabs_2025.xlsx",
+      "2026": "inmalaga_pricelabs_2026.xlsx",
+      "2027": "inmalaga_pricelabs_2027.xlsx"
+    },
+    "pricelabs_timestamps": {
+      "2022": 1774941746.6477282,
+      "2023": 1774941747.5807884,
+      "2024": 1774941748.7906404,
+      "2025": 1774941749.7321582,
+      "2026": 1774941750.633097,
+      "2027": 1774941751.570403
+    }
+  },
+  "la_barcena": {
+    "nombre": "La Barcena",
+    "archivo_csv": "la_barcena.csv",
+    "markups": {
+      "Airbnb": 0.0,
+      "Booking": 39.0,
+      "Web": -10.0
+    },
+    "descuentos": [
+      {
+        "Desde": 1,
+        "Hasta": 2,
+        "Descuento (%)": 0.0
+      },
+      {
+        "Desde": 3,
+        "Hasta": 3,
+        "Descuento (%)": 7.0
+      },
+      {
+        "Desde": 4,
+        "Hasta": 4,
+        "Descuento (%)": 5.0
+      }
+    ],
+    "pricelabs_files": {},
+    "pricelabs_timestamps": {}
+  }
+}
