@@ -136,9 +136,13 @@ def calcular_rentabileitor_pro_2026_vs_2025(
     # Conservative variant (5% above previous year ADR)
     adr_conservador = adr_2025 * 1.05
 
+    # Aggressive variant (use ceiling as upper bound)
+    adr_agresivo = techo
+
     # Calculate RMS prices
     precio_rms_optimo = calcular_precio_rms_desde_objetivo(adr_optimo, limpieza, noches, markup, descuento)
     precio_rms_conservador = calcular_precio_rms_desde_objetivo(adr_conservador, limpieza, noches, markup, descuento)
+    precio_rms_agresivo = calcular_precio_rms_desde_objetivo(adr_agresivo, limpieza, noches, markup, descuento)
 
     # Diagnose forecast
     diagnostico = diagnosticar_forecast(((adr_2026_forecast / adr_2025) - 1) * 100, adr_2026_forecast, adr_optimo)
@@ -146,8 +150,10 @@ def calcular_rentabileitor_pro_2026_vs_2025(
     return {
         "adr_conservador": adr_conservador,
         "adr_optimo": adr_optimo,
+        "adr_agresivo": adr_agresivo,
         "precio_rms_conservador": precio_rms_conservador,
         "precio_rms_optimo": precio_rms_optimo,
+        "precio_rms_agresivo": precio_rms_agresivo,
         "limpieza_noche": limpieza_noche,
         "ajuste_yoy": ajuste_yoy,
         "ajuste_limpieza": ajuste_limpieza,
