@@ -471,29 +471,28 @@ def section_rentabileitor(
     # ================== COLUMNA DERECHA: RESULTADOS ==================
     with col_right:
         # ================== RESUMEN COMPACTO ==================
-        st.markdown("### ✅ Configuración")
+        # Formatear fechas como (dia-mes-año)
+        start_fmt = start_date.strftime("%d-%m-%Y")
+        end_fmt = end_date.strftime("%d-%m-%Y")
+        start_ant_fmt = start_anterior.strftime("%d-%m-%Y")
+        end_ant_fmt = end_anterior.strftime("%d-%m-%Y")
         
-        # Mostrar resumen en una sola columna (compacto)
-        st.metric("🏢", f"{empresa_sel}")
-        st.metric("🏠", f"{apt_app}")
-        st.metric("📊", f"{year_actual} vs {year_anterior}")
+        st.markdown(f"### {empresa_sel} • {apt_app}")
+        st.markdown(f"**Comparativa:** ({start_fmt} a {end_fmt}) vs ({start_ant_fmt} a {end_ant_fmt})")
         
         # ================== VALIDACIÓN EN VIVO DE FECHAS ==================
         # Validar ambos años
         dias_actual = (end_date - start_date).days + 1 if start_date < end_date and (end_date - start_date).days <= 365 else None
         dias_anterior = (end_anterior - start_anterior).days + 1 if start_anterior < end_anterior and (end_anterior - start_anterior).days <= 365 else None
         
-        # Mostrar en una línea compacta
-        if dias_actual and dias_anterior:
-            st.markdown(f"📋 **Comparando:** {year_actual} ({dias_actual}d) vs {year_anterior} ({dias_anterior}d)")
-        else:
-            if not dias_actual:
-                st.error(f"⚠️ {year_actual}: fechas inválidas")
-            if not dias_anterior:
-                st.error(f"⚠️ {year_anterior}: fechas inválidas")
+        # Mostrar errores solo si hay problemas
+        if not dias_actual:
+            st.error(f"⚠️ {year_actual}: fechas inválidas")
+        if not dias_anterior:
+            st.error(f"⚠️ {year_anterior}: fechas inválidas")
         
         # Display data - Visualización minimalista
-        st.markdown(f"### 📊 Comparativa {year_actual} vs {year_anterior}")
+        st.markdown(f"### 📊 Datos")
         
         # Calculate daily averages (promedio de datos diarios)
         def safe_mean(col_name, df):
