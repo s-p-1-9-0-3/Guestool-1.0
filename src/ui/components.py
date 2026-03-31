@@ -18,7 +18,7 @@ from src.utils import (
 )
 
 # Constants
-WIZARD_STEPS = ["Empresa", "Archivo", "Markups", "Descuentos"]
+WIZARD_STEPS = ["Empresa", "Archivo", "PriceLabs", "Markups", "Descuentos"]
 DATA_DIR = Path("datos")
 
 
