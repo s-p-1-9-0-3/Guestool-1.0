@@ -6,15 +6,18 @@ import pandas as pd
 from pathlib import Path
 import streamlit as st
 from .text import slugify, pretty_name_from_slug, normalizar_texto
+from datetime import datetime
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "datos"
 CONFIG_DIR = BASE_DIR / "config"
+CACHE_DIR = DATA_DIR / ".cache"  # Directorio para cachés en Parquet
 CONFIG_PATH = CONFIG_DIR / "empresas_config.json"
 
 DATA_DIR.mkdir(exist_ok=True)
 CONFIG_DIR.mkdir(exist_ok=True)
+CACHE_DIR.mkdir(exist_ok=True)
 
 
 def default_empresa_config(nombre_empresa: str, archivo_csv: str) -> dict:
@@ -87,6 +90,69 @@ def bootstrap_config_with_existing_csvs(config: dict) -> dict:
         save_config_to_disk(config)
 
     return config
+
+
+# ==================== FUNCIONES DE CACHÉ EN PARQUET ====================
+
+def obtener_year_actual() -> int:
+    """Obtiene el año actual."""
+    return datetime.now().year
+
+
+def guardar_pricelabs_parquet(empresa_id: str, year: int, df: pd.DataFrame) -> bool:
+    """
+    Guarda un DataFrame procesado de PriceLabs en formato Parquet comprimido.
+    Útil para cachear años históricos que no van a cambiar.
+    
+    Args:
+        empresa_id: ID de la empresa
+        year: Año de los datos
+        df: DataFrame procesado
+    
+    Returns:
+        True si se guardó correctamente, False si fallo
+    """
+    import sys
+    try:
+        nombre_cache = f"{empresa_id}_pricelabs_{year}.parquet"
+        ruta = CACHE_DIR / nombre_cache
+        
+        # Guardar con compresión
+        df.to_parquet(ruta, compression='snappy', index=False)
+        
+        file_size = os.path.getsize(ruta)
+        print(f"[DEBUG] ✓ Caché Parquet guardado: {nombre_cache} ({file_size} bytes)", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"[DEBUG] ✗ Error guardando caché Parquet para {empresa_id}/{year}: {e}", file=sys.stderr)
+        return False
+
+
+def cargar_pricelabs_parquet(empresa_id: str, year: int) -> pd.DataFrame:
+    """
+    Carga un DataFrame de PriceLabs desde caché Parquet si existe.
+    
+    Args:
+        empresa_id: ID de la empresa
+        year: Año de los datos
+    
+    Returns:
+        DataFrame cacheado, o None si no existe el caché
+    """
+    import sys
+    try:
+        nombre_cache = f"{empresa_id}_pricelabs_{year}.parquet"
+        ruta = CACHE_DIR / nombre_cache
+        
+        if ruta.exists():
+            df = pd.read_parquet(ruta)
+            print(f"[DEBUG] ✓ Caché Parquet cargado: {nombre_cache} ({df.shape[0]} filas)", file=sys.stderr)
+            return df
+        else:
+            return None
+    except Exception as e:
+        print(f"[DEBUG] ✗ Error cargando caché Parquet para {empresa_id}/{year}: {e}", file=sys.stderr)
+        return None
 
 
 @st.cache_data(show_spinner=False)
@@ -192,24 +258,54 @@ def guardar_pricelabs_excel(empresa_id: str, archivos: list) -> bool:
                 print(f"[DEBUG] ✗ Error procesando {archivo.name}: {e}", file=sys.stderr)
                 # Still save the raw file even if processing fails
             
-            # ✅ PASO 6: Guardar archivo (ahora sabemos que contenido es válido)
-            nombre_archivo = f"{empresa_id}_pricelabs_{year_detectado}.xlsx"
-            ruta = DATA_DIR / nombre_archivo
+            # ✅ PASO 6: Guardar archivo
+            year_actual = obtener_year_actual()
             
-            with open(ruta, "wb") as f:
-                f.write(contenido)
+            if year_detectado < year_actual:
+                # 📦 AÑOS ANTERIORES: Guardar en caché Parquet (comprimido, rápido de cargar)
+                if year_detectado in procesados:
+                    if guardar_pricelabs_parquet(empresa_id, year_detectado, procesados[year_detectado]):
+                        print(f"[DEBUG] ✓ Año {year_detectado} (anterior) guardado en caché Parquet", file=sys.stderr)
+                        # NO guardar en Excel para años anteriores, solo en caché
+                        pricelabs_files[year_detectado] = f"{empresa_id}_pricelabs_{year_detectado}.xlsx"
+                        timestamps[str(year_detectado)] = datetime.now().timestamp()
+                    else:
+                        st.error(f"❌ Error guardando caché Parquet para {archivo.name}")
+                        continue
+                else:
+                    # Si no se procesó, guardar el Excel de todas formas
+                    nombre_archivo = f"{empresa_id}_pricelabs_{year_detectado}.xlsx"
+                    ruta = DATA_DIR / nombre_archivo
+                    with open(ruta, "wb") as f:
+                        f.write(contenido)
+                    file_size = os.path.getsize(ruta)
+                    if file_size == 0:
+                        st.error(f"❌ Error al guardar {nombre_archivo}: archivo vacío.")
+                        os.remove(ruta)
+                        continue
+                    pricelabs_files[year_detectado] = nombre_archivo
+                    timestamps[str(year_detectado)] = os.path.getmtime(ruta)
+            else:
+                # 📊 AÑO ACTUAL Y SIGUIENTES: Guardar como Excel (pueden cambiar)
+                nombre_archivo = f"{empresa_id}_pricelabs_{year_detectado}.xlsx"
+                ruta = DATA_DIR / nombre_archivo
+                
+                with open(ruta, "wb") as f:
+                    f.write(contenido)
+                
+                # ✅ PASO 7: Validar que el archivo se guardó correctamente
+                file_size = os.path.getsize(ruta)
+                if file_size == 0:
+                    st.error(f"❌ Error al guardar {nombre_archivo}: archivo resultante está vacío.")
+                    print(f"[DEBUG] ✗ Archivo guardado en {ruta} pero tiene 0 bytes", file=sys.stderr)
+                    os.remove(ruta)  # Limpiar el archivo corrupto
+                    continue
+                
+                pricelabs_files[year_detectado] = nombre_archivo
+                timestamps[str(year_detectado)] = os.path.getmtime(ruta)
+                print(f"[DEBUG] ✓ Guardado Excel (año actual) en disco: {nombre_archivo} ({file_size} bytes)", file=sys.stderr)
             
-            # ✅ PASO 7: Validar que el archivo se guardó correctamente
-            file_size = os.path.getsize(ruta)
-            if file_size == 0:
-                st.error(f"❌ Error al guardar {nombre_archivo}: archivo resultante está vacío.")
-                print(f"[DEBUG] ✗ Archivo guardado en {ruta} pero tiene 0 bytes", file=sys.stderr)
-                os.remove(ruta)  # Limpiar el archivo corrupto
-                continue
-            
-            pricelabs_files[year_detectado] = nombre_archivo
-            timestamps[str(year_detectado)] = os.path.getmtime(ruta)
-            print(f"[DEBUG] ✓ Guardado en disco: {nombre_archivo} ({file_size} bytes)", file=sys.stderr)
+            print(f"[DEBUG] ✓ Guardado {year_detectado}: tipo={'Parquet (histórico)' if year_detectado < year_actual else 'Excel (actual)'}", file=sys.stderr)
         except Exception as e:
             st.warning(f"❌ Error procesando {archivo.name}: {e}")
             print(f"[DEBUG] ✗ Excepción en archivo {archivo.name}: {e}", file=sys.stderr)
@@ -338,7 +434,27 @@ def cargar_pricelabs_excel(empresa_id: str, force_reload: bool = False) -> dict:
     from src.utils.pricelabs import procesar_pricelabs_excel
     
     resultado = {}
+    year_actual = obtener_year_actual()
+    
     for year, nombre_archivo in pricelabs_files.items():
+        year_int = int(year)
+        
+        # 🎯 ESTRATEGIA DE CACHÉ:
+        # - Años anteriores al actual: intentar cargar desde Parquet (rápido)
+        # - Año actual y siguientes: cargar desde Excel (pueden cambiar)
+        
+        if year_int < year_actual:
+            # 📦 Intentar cargar desde caché Parquet (años históricos)
+            print(f"[DEBUG] Año {year_int} (anterior): intentando cargar desde Parquet...", file=sys.stderr)
+            df_cached = cargar_pricelabs_parquet(empresa_id, year_int)
+            if df_cached is not None:
+                resultado[year_int] = df_cached
+                print(f"[DEBUG] ✓ Cargado desde Parquet: {year_int} ({df_cached.shape[0]} filas)", file=sys.stderr)
+                continue
+            else:
+                print(f"[DEBUG] ⚠️ No existe caché Parquet para {year_int}, intentando Excel si existe...", file=sys.stderr)
+        
+        # Intentar cargar desde Excel en disco
         ruta = DATA_DIR / nombre_archivo
         if ruta.exists():
             try:
@@ -357,13 +473,19 @@ def cargar_pricelabs_excel(empresa_id: str, force_reload: bool = False) -> dict:
                 
                 # ✅ PROCESAR EL DATAFRAME INMEDIATAMENTE DESPUÉS DE CARGAR
                 try:
-                    df_procesado = procesar_pricelabs_excel(df_raw, nombre_archivo, int(year))
-                    resultado[int(year)] = df_procesado
+                    df_procesado = procesar_pricelabs_excel(df_raw, nombre_archivo, year_int)
+                    resultado[year_int] = df_procesado
                     print(f"[DEBUG] ✓ Cargado y procesado del disco: {nombre_archivo} ({df_procesado.shape[0]} filas, {file_size} bytes)", file=sys.stderr)
+                    
+                    # 💾 Si es un año anterior, guardar en Parquet para próximo acceso
+                    if year_int < year_actual:
+                        if guardar_pricelabs_parquet(empresa_id, year_int, df_procesado):
+                            print(f"[DEBUG] ✓ Cacheado en Parquet para próximos accesos: {year_int}", file=sys.stderr)
+                        
                 except Exception as e:
                     print(f"[DEBUG] ⚠️ ERROR PROCESANDO {nombre_archivo}: {type(e).__name__}: {e}", file=sys.stderr)
                     # Si falla el procesamiento, guardar el raw de todas formas
-                    resultado[int(year)] = df_raw
+                    resultado[year_int] = df_raw
                     print(f"[DEBUG] (Usando DataFrame raw como fallback)", file=sys.stderr)
             except Exception as e:
                 print(f"[DEBUG] ⚠️ ERROR CARGANDO {nombre_archivo}: {type(e).__name__}: {e}", file=sys.stderr)
