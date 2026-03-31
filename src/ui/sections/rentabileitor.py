@@ -681,15 +681,24 @@ def section_rentabileitor(
                 occ_2025 = resumen_anterior[f"ocupacion_{year_anterior}"]
                 occ_2026 = resumen_actual[f"ocupacion_{year_actual}"]
                 
-                if adr_2025 is None or adr_2026 is None or adr_2025 <= 0 or adr_2026 <= 0:
-                    st.error(f"❌ No hay datos de ADR válidos para {year_anterior} ({adr_2025}) o {year_actual} ({adr_2026}).")
+                # NUEVA LÓGICA: Permitir apartamentos nuevos (sin datos en año anterior)
+                if (adr_2025 is None or adr_2025 <= 0) and (adr_2026 is None or adr_2026 <= 0):
+                    st.error(f"❌ No hay datos de ADR para {year_anterior} ni {year_actual}. Se necesita al menos un año con datos.")
                     st.markdown("</div>", unsafe_allow_html=True)
                     return
                 
-                if occ_2025 is None or occ_2026 is None:
-                    st.warning(f"⚠️ Ocupación incompleta para {year_anterior} o {year_actual}. Se usarán valores por defecto.")
-                    occ_2025 = occ_2025 or 50.0
-                    occ_2026 = occ_2026 or 50.0
+                # Si falta ocupación, usar valores por defecto
+                if occ_2025 is None or occ_2025 <= 0:
+                    occ_2025 = 50.0
+                if occ_2026 is None or occ_2026 <= 0:
+                    occ_2026 = 50.0
+                
+                # Detectar si es apartamento nuevo
+                es_nuevo = (adr_2025 is None or adr_2025 <= 0) and (adr_2026 is not None and adr_2026 > 0)
+                
+                if es_nuevo:
+                    st.info(f"ℹ️ **Primera temporada**: Este apartamento solo tiene datos de {year_actual}. Se usará como baseline.")
+
 
                 resultado = calcular_rentabileitor_pro_2026_vs_2025(
                     adr_2025=adr_2025,
@@ -709,6 +718,10 @@ def section_rentabileitor(
                     st.error("No se ha podido calcular el resultado.")
                     st.markdown("</div>", unsafe_allow_html=True)
                     return
+
+                # Mostrar aviso si es primera temporada
+                if resultado.get("es_primera_temporada", False):
+                    st.warning("⚠️ **Sin histórico**: Esta estimación se basa únicamente en datos actuales (crecimiento conservador del 5%).")
 
                 estado = resultado["diagnostico"]
                 if estado == "Forecast correcto":

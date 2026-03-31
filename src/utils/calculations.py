@@ -46,10 +46,28 @@ def calcular_rentabileitor_pro_2026_vs_2025(
     """
     Calculate Rentabileitor PRO 2026 vs 2025 pricing recommendations.
     
-    Uses weighted combination of 2025 ADR (55%) and 2026 forecast (45%),
-    with adjustments for YoY growth, cleaning, discounts, markup, LOS, and occupancy.
+    Uses weighted combination of ADRs when both available (55%/45%).
+    If only one year's data exists (new property), uses that year as baseline with conservative growth (5%).
     """
-    if adr_2025 is None or adr_2026_forecast is None or adr_2025 <= 0 or adr_2026_forecast <= 0:
+    # NEW LOGIC: Handle missing historical data (new properties)
+    es_primera_temporada = False
+    
+    if adr_2025 is None or adr_2025 <= 0:
+        if adr_2026_forecast is None or adr_2026_forecast <= 0:
+            return None
+        # Property is new: use 2026 as baseline
+        adr_2025 = adr_2026_forecast
+        es_primera_temporada = True
+    
+    if adr_2026_forecast is None or adr_2026_forecast <= 0:
+        if adr_2025 is None or adr_2025 <= 0:
+            return None
+        # Only 2025 exists: project to 2026 with conservative growth
+        adr_2026_forecast = adr_2025 * 1.05
+        es_primera_temporada = False
+    
+    # Original validation for other parameters
+    if adr_2025 <= 0 or adr_2026_forecast <= 0:
         return None
 
     limpieza_noche = limpieza / noches
@@ -140,4 +158,5 @@ def calcular_rentabileitor_pro_2026_vs_2025(
         "diagnostico": diagnostico,
         "gap_vs_forecast_pct": ((adr_optimo / adr_2026_forecast) - 1) * 100,
         "yoy_forecast_pct": ((adr_2026_forecast / adr_2025) - 1) * 100,
+        "es_primera_temporada": es_primera_temporada,  # Flag para nuevas propiedades
     }
