@@ -221,6 +221,14 @@ def wizard_paso1():
                 ruta = DATA_DIR / config[empresa_id].get("archivo_csv", f"{empresa_id}.csv")
                 if ruta.exists():
                     st.warning(f"⚠️ Ya existe **{config[empresa_id]['nombre']}**. Continuando sobreescribirás sus datos.")
+            
+            # 🔧 LIMPIAR CACHE DE SESSION_STATE AL CAMBIAR DE EMPRESA
+            old_id = st.session_state.get("wizard_empresa_id", "")
+            if old_id and old_id != empresa_id:
+                # Limpiar datos de la empresa anterior
+                st.session_state.pop(f"pricelabs_data_{old_id}", None)
+                print(f"[DEBUG] Limpiado session_state para empresa anterior: {old_id}", file=sys.stderr)
+            
             st.session_state.wizard_empresa_nombre = nombre
             st.session_state.wizard_empresa_id     = empresa_id
             st.session_state.wizard_step           = 2
@@ -457,12 +465,26 @@ def wizard_paso5_estrategia():
                     msg += f" y datos de {len(archivos_pl)} año(s)"
                 st.success(msg + ".")
 
+                # 🔧 LIMPIAR TODOS LOS CACHES DEL WIZARD Y PRICELABS
+                import sys
                 st.session_state.wizard_step           = 1
                 st.session_state.wizard_empresa_nombre = ""
+                old_empresa_id = st.session_state.get("wizard_empresa_id", "")
                 st.session_state.wizard_empresa_id     = ""
                 st.session_state.wizard_df_limpio      = None
                 st.session_state.pop("wiz_markups", None)
                 st.session_state.pop("wiz_pricelabs_archivos", None)
+                
+                # Limpiar session_state del pricelabs cacheado
+                if old_empresa_id:
+                    st.session_state.pop(f"pricelabs_data_{old_empresa_id}", None)
+                    print(f"[DEBUG PASO5_SAVE] Limpiado session_state para: {old_empresa_id}", file=sys.stderr)
+                
+                # También limpiar de TODOS los empresas cacheadas (por si hay contaminación)
+                keys_a_limpiar = [k for k in st.session_state.keys() if k.startswith("pricelabs_data_")]
+                for key in keys_a_limpiar:
+                    st.session_state.pop(key, None)
+                    print(f"[DEBUG PASO5_SAVE] Limpiado key: {key}", file=sys.stderr)
 
             except Exception as e:
                 st.error(f"❌ Error al guardar: {e}")
@@ -585,6 +607,56 @@ def wizard_editar():
             guardar_config(config)
             invalidar_config()
             st.success("✅ Descuentos guardados.")
+
+    # ===== ELIMINAR EMPRESA (ZONA PELIGROSA) =====
+    with st.expander("🗑️ Eliminar empresa (irreversible)", expanded=False):
+        st.markdown('<p style="color:#ff6b6b;font-weight:bold;">⚠️ Esta acción eliminará TODOS los datos de la empresa: archivo de alojamientos, datos de PriceLabs, markups y descuentos.</p>', unsafe_allow_html=True)
+        
+        # Mostrar selector de empresa para confirmar
+        empresa_confirmar = st.selectbox(
+            "Selecciona la empresa a eliminar para confirmar:",
+            options=list(opciones.keys()),
+            index=0,
+            key=f"delete_confirm_select_{empresa_id}"
+        )
+        
+        if st.button("🗑️ Eliminar empresa completamente", key=f"delete_empresa_{empresa_id}", type="secondary"):
+            if empresa_confirmar == empresa_sel:
+                try:
+                    import os
+                    from pathlib import Path
+                    
+                    # Eliminar archivo CSV de alojamientos
+                    ruta_csv = DATA_DIR / f"{empresa_id}.csv"
+                    if ruta_csv.exists():
+                        os.remove(ruta_csv)
+                    
+                    # Eliminar TODOS los archivos de PriceLabs (excels)
+                    for archivo_pricelabs in DATA_DIR.glob(f"{empresa_id}_pricelabs_*"):
+                        try:
+                            os.remove(archivo_pricelabs)
+                        except Exception as e:
+                            st.warning(f"⚠️ No se pudo eliminar {archivo_pricelabs.name}: {e}")
+                    
+                    # Eliminar de configuración
+                    config = cargar_config()
+                    if empresa_id in config:
+                        del config[empresa_id]
+                        guardar_config(config)
+                    
+                    invalidar_config()
+                    
+                    st.success(f"✅ Empresa '{empresa_sel}' eliminada completamente (incluidos todos sus excels).")
+                    st.session_state.wizard_mode = "nuevo"
+                    st.session_state.wizard_step = 1
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error al eliminar: {e}")
+                    import traceback
+                    st.error(traceback.format_exc())
+            else:
+                st.error(f"❌ La empresa seleccionada no coincide. Debes seleccionar '{empresa_sel}' para confirmar.")
+
 
 
 # =========================================================

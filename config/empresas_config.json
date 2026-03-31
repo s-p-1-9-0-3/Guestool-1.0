@@ -42,12 +42,12 @@
     "pricelabs_2025_file": "living4malaga_standard_pricelabs_2025.xlsx",
     "pricelabs_2026_file": "living4malaga_standard_pricelabs_2026.xlsx",
     "pricelabs_timestamps": {
-      "2022": 1774943709.6351476,
-      "2023": 1774943711.2040408,
-      "2024": 1774943712.819708,
-      "2025": 1774943714.4170606,
-      "2026": 1774943716.0205066,
-      "2027": 1774943717.544583
+      "2022": 1774968782.306496,
+      "2023": 1774968783.9225464,
+      "2024": 1774968785.539051,
+      "2025": 1774968787.180599,
+      "2026": 1774968788.8299787,
+      "2027": 1774968790.4408197
     },
     "pricelabs_files": {
       "2022": "living4malaga_standard_pricelabs_2022.xlsx",
@@ -102,12 +102,12 @@
       "2027": "inmalaga_pricelabs_2027.xlsx"
     },
     "pricelabs_timestamps": {
-      "2022": 1774941746.6477282,
-      "2023": 1774941747.5807884,
-      "2024": 1774941748.7906404,
-      "2025": 1774941749.7321582,
-      "2026": 1774941750.633097,
-      "2027": 1774941751.570403
+      "2022": 1774968090.7551837,
+      "2023": 1774968091.298249,
+      "2024": 1774968091.8694668,
+      "2025": 1774968092.422575,
+      "2026": 1774968092.962263,
+      "2027": 1774968093.5100913
     }
   },
   "la_barcena": {
@@ -142,82 +142,6 @@
     "pricelabs_timestamps": {
       "2025": 1774957909.937985,
       "2026": 1774957910.2483096
-    }
-  },
-  "prueba": {
-    "nombre": "Prueba",
-    "archivo_csv": "prueba.csv",
-    "markups": {
-      "Airbnb": 0.0,
-      "Booking": 0.0,
-      "Web": 0.0
-    },
-    "descuentos": [
-      {
-        "Desde": 1,
-        "Hasta": 3,
-        "Descuento (%)": 0.0
-      },
-      {
-        "Desde": 4,
-        "Hasta": 7,
-        "Descuento (%)": 0.0
-      },
-      {
-        "Desde": 8,
-        "Hasta": 365,
-        "Descuento (%)": 0.0
-      }
-    ],
-    "pricelabs_files": {
-      "2025": "prueba_pricelabs_2025.xlsx",
-      "2026": "prueba_pricelabs_2026.xlsx"
-    },
-    "pricelabs_timestamps": {
-      "2025": 1774957874.3527048,
-      "2026": 1774957874.5981476
-    }
-  },
-  "prueba_2": {
-    "nombre": "Prueba 2",
-    "archivo_csv": "prueba_2.csv",
-    "markups": {
-      "Airbnb": 0.0,
-      "Booking": 0.0,
-      "Web": 0.0
-    },
-    "descuentos": [
-      {
-        "Desde": 1,
-        "Hasta": 3,
-        "Descuento (%)": 0.0
-      },
-      {
-        "Desde": 4,
-        "Hasta": 7,
-        "Descuento (%)": 0.0
-      },
-      {
-        "Desde": 8,
-        "Hasta": 365,
-        "Descuento (%)": 0.0
-      }
-    ],
-    "pricelabs_files": {
-      "2022": "prueba_2_pricelabs_2022.xlsx",
-      "2023": "prueba_2_pricelabs_2023.xlsx",
-      "2024": "prueba_2_pricelabs_2024.xlsx",
-      "2025": "prueba_2_pricelabs_2025.xlsx",
-      "2026": "prueba_2_pricelabs_2026.xlsx",
-      "2027": "prueba_2_pricelabs_2027.xlsx"
-    },
-    "pricelabs_timestamps": {
-      "2022": 1774957999.3219838,
-      "2023": 1774957999.895605,
-      "2024": 1774958000.4808753,
-      "2025": 1774958001.030744,
-      "2026": 1774958001.6320074,
-      "2027": 1774958002.2112496
     }
   }
 }
