@@ -5,6 +5,26 @@ import math
 from datetime import datetime
 import pandas as pd
 import streamlit as st
+from .rentabileitor import (
+    fuzzy_match,
+    filtrar_apartamentos_por_empresa,
+    safe_mean,
+    calcular_adr_ocupados,
+    calcular_ocupacion,
+    calcular_revpar,
+    calcular_cambio,
+    render_metrica_minimal,
+)
+from .rentabileitor import (
+    fuzzy_match,
+    filtrar_apartamentos_por_empresa,
+    safe_mean,
+    calcular_adr_ocupados,
+    calcular_ocupacion,
+    calcular_revpar,
+    calcular_cambio,
+    render_metrica_minimal,
+)
 
 
 def section_rentabileitor(
@@ -227,45 +247,11 @@ def section_rentabileitor(
             markup = markups[canal]
         
         # ================== PASO 4: DETECTAR ALOJAMIENTO EN PRICELABS (CON FUZZY MATCHING) ==================
-        from difflib import SequenceMatcher
-        
-        def fuzzy_match(nombre_app, lista_excel, threshold=0.6):
-            """
-            Busca coincidencias fuzzy en la lista de alojamientos.
-            Retorna lista de (nombre_excel, score) ordenada por score descendente.
-            """
-            matches = []
-            nombre_app_lower = nombre_app.lower()
-            
-            for nombre_excel in lista_excel:
-                nombre_excel_lower = nombre_excel.lower()
-                # Calcular similitud
-                ratio = SequenceMatcher(None, nombre_app_lower, nombre_excel_lower).ratio()
-                if ratio >= threshold:
-                    matches.append((nombre_excel, ratio))
-            
-            # Ordenar por score descendente
-            matches.sort(key=lambda x: x[1], reverse=True)
-            return matches
-        
-        # FILTRAR PARA SOLO MOSTRAR APARTAMENTOS DE LA EMPRESA SELECCIONADA
-        # Usar lista de apartamentos de la empresa (no sacar de df_pl que contiene todas)
-        lista_excel_de_empresa = sorted(list(apartamentos_app.keys()))
-        
-        # Pero también buscar en los excels por si hay coincidencias más cercanas
+        # Obtener lista de apartamentos en los excels
         lista_excel_en_excels = sorted(df_pl["apartamento_excel"].dropna().unique().tolist())
         
-        # Filtrar lista_excel_en_excels para SOLO incluir apartamentos similares a los de la empresa
-        lista_excel_filtrada = []
-        for apt_repo in lista_excel_de_empresa:
-            for apt_excel in lista_excel_en_excels:
-                ratio = SequenceMatcher(None, apt_repo.lower(), apt_excel.lower()).ratio()
-                if ratio >= 0.5:  # threshold bajo para encontrar variaciones
-                    if apt_excel not in lista_excel_filtrada:
-                        lista_excel_filtrada.append(apt_excel)
-        
-        # Si no encuentra coincidencias, usar solo la lista de la empresa
-        lista_excel = sorted(lista_excel_filtrada) if lista_excel_filtrada else lista_excel_de_empresa
+        # Filtrar y obtener lista final de apartamentos
+        lista_excel = filtrar_apartamentos_por_empresa(apartamentos_app, lista_excel_en_excels)
         
         # Buscar coincidencias fuzzy
         coincidencias = fuzzy_match(apt_app, lista_excel, threshold=0.6)
@@ -489,38 +475,6 @@ def section_rentabileitor(
         # Display data - Visualización minimalista
         st.markdown(f"### 📊 Datos")
         
-        # Calculate daily averages (promedio de datos diarios)
-        def safe_mean(col_name, df):
-            if col_name not in df.columns:
-                return None
-            vals = pd.to_numeric(df[col_name], errors="coerce").dropna()
-            return vals.mean() if len(vals) > 0 else None
-
-        # ADR se calcula SOLO de días con ocupación > 0 (días reservados)
-        def calcular_adr_ocupados(df_periodo, col_adr, col_occ):
-            """Calcula ADR promedio solo para días ocupados (ocupación > 0)"""
-            occ_vals = pd.to_numeric(df_periodo[col_occ], errors="coerce").fillna(0)
-            adr_vals = pd.to_numeric(df_periodo[col_adr], errors="coerce")
-            
-            # Filtrar solo días ocupados
-            dias_ocupados = adr_vals[occ_vals > 0].dropna()
-            return dias_ocupados.mean() if len(dias_ocupados) > 0 else None
-        
-        def calcular_ocupacion(df_periodo, col_occ):
-            """Calcula ocupación = (días con ocupación > 0) / total días * 100"""
-            occ_vals = pd.to_numeric(df_periodo[col_occ], errors="coerce").fillna(0)
-            dias_ocupados = (occ_vals > 0).sum()
-            total_dias = len(df_periodo)
-            if total_dias > 0:
-                return (dias_ocupados / total_dias) * 100
-            return None
-        
-        def calcular_revpar(adr, ocupacion):
-            """Calcula Rev Par = ADR * (Ocupación / 100)"""
-            if adr is None or ocupacion is None:
-                return None
-            return adr * (ocupacion / 100)
-        
         # Obtener nombres de columnas dinámicamente
         col_adr_actual = f"adr_{year_actual}"
         col_adr_anterior = f"adr_{year_anterior}"
@@ -561,45 +515,7 @@ def section_rentabileitor(
             st.markdown("</div>", unsafe_allow_html=True)
             return
         
-        def calcular_cambio(val_nuevo, val_anterior):
-            """Calcula el porcentaje de cambio y retorna (pct_cambio, es_positivo)"""
-            if val_nuevo is None or val_anterior is None or pd.isna(val_nuevo) or pd.isna(val_anterior):
-                return None, None
-            if val_anterior == 0:
-                return None, None
-            pct = ((val_nuevo - val_anterior) / val_anterior) * 100
-            return pct, pct >= 0
-        
-        def render_metrica_minimal(nombre, valor_actual, valor_anterior, unidad):
-            """Renderiza métrica minimalista: año_actual | año_anterior | % cambio - FULL WIDTH"""
-            pct_cambio, es_positivo = calcular_cambio(valor_actual, valor_anterior)
-            
-            # Determinar color y símbolo
-            if pct_cambio is None:
-                color_pct = "#888888"
-                simbolo = "⚪"
-                pct_text = "—"
-            elif es_positivo:
-                color_pct = "#00aa00"
-                simbolo = "↑"
-                pct_text = f"+{pct_cambio:.1f}%"
-            else:
-                color_pct = "#dd0000"
-                simbolo = "↓"
-                pct_text = f"{pct_cambio:.1f}%"
-            
-            val_actual_str = f"{valor_actual:.2f}" if valor_actual is not None and not pd.isna(valor_actual) else "—"
-            val_anterior_str = f"{valor_anterior:.2f}" if valor_anterior is not None and not pd.isna(valor_anterior) else "—"
-            
-            st.markdown(
-                f"<div style='display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-left: 4px solid #1f77b4; background: #f8f9fa; margin-bottom: 10px; border-radius: 4px;'>"
-                f"<div style='font-weight: 600; flex: 0.6; font-size: 14px;'>{nombre}</div>"
-                f"<div style='text-align: center; flex: 1; font-size: 12px;'><span style='color: #999; display: block; font-size: 10px; margin-bottom: 2px;'>{year_actual}</span><span style='font-weight: 600; font-size: 13px;'>{val_actual_str} <span style=\"color: #999; font-weight: 400;\">{unidad}</span></span></div>"
-                f"<div style='text-align: center; flex: 1; font-size: 12px;'><span style='color: #999; display: block; font-size: 10px; margin-bottom: 2px;'>{year_anterior}</span><span style='font-weight: 600; font-size: 13px;'>{val_anterior_str} <span style=\"color: #999; font-weight: 400;\">{unidad}</span></span></div>"
-                f"<div style='text-align: center; flex: 0.8; font-size: 12px;'><span style='color: #999; display: block; font-size: 10px; margin-bottom: 2px;'>Cambio</span><span style='color: {color_pct}; font-weight: 600; font-size: 13px;'>{simbolo} {pct_text}</span></div>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+
         
         st.markdown("---")
         
@@ -608,35 +524,45 @@ def section_rentabileitor(
             "💰 ADR",
             resumen_actual[f'adr_{year_actual}'],
             resumen_anterior[f'adr_{year_anterior}'],
-            "€"
+            "€",
+            year_actual,
+            year_anterior
         )
         
         render_metrica_minimal(
             "📊 Ocupación",
             resumen_actual[f'ocupacion_{year_actual}'],
             resumen_anterior[f'ocupacion_{year_anterior}'],
-            "%"
+            "%",
+            year_actual,
+            year_anterior
         )
         
         render_metrica_minimal(
             "🌙 LOS",
             resumen_actual[f'los_{year_actual}'],
             resumen_anterior[f'los_{year_anterior}'],
-            "noches"
+            "noches",
+            year_actual,
+            year_anterior
         )
         
         render_metrica_minimal(
             "💵 Rev Par",
             revpar_actual,
             revpar_anterior,
-            "€"
+            "€",
+            year_actual,
+            year_anterior
         )
         
         render_metrica_minimal(
             "💸 Ingresos",
             resumen_actual[f'ingresos_{year_actual}'],
             resumen_anterior[f'ingresos_{year_anterior}'],
-            "€"
+            "€",
+            year_actual,
+            year_anterior
         )
         
         # ===== MOSTRAR RESULTADO SI SE CALCULA =====
