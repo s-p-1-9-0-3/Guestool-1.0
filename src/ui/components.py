@@ -663,6 +663,48 @@ def wizard_editar():
 # SECTION WIZARD
 # =========================================================
 def section_wizard():
+    # PIN de acceso al Wizard
+    PIN_WIZARD = "1234"
+    
+    # Si el PIN no está verificado, mostrar pantalla de login
+    if not st.session_state.get("wizard_pin_verified", False):
+        st.markdown(
+            '<div class="dashboard-card" style="text-align: center; padding: 60px 40px;">'
+            '<div class="section-title">🔐 Acceso al Wizard</div>'
+            '<div class="section-subtitle" style="margin-bottom: 40px;">Ingresa el PIN para continuar</div>',
+            unsafe_allow_html=True
+        )
+        
+        col_center = st.columns([1, 2, 1])
+        with col_center[1]:
+            pin_input = st.text_input(
+                "PIN de 4 dígitos",
+                value="",
+                type="password",
+                max_chars=4,
+                key="wizard_pin_input",
+                placeholder="••••"
+            )
+            
+            col_btn = st.columns([1, 1])
+            with col_btn[0]:
+                if st.button("✓ Verificar", use_container_width=True):
+                    if pin_input == PIN_WIZARD:
+                        st.session_state.wizard_pin_verified = True
+                        st.success("✅ PIN correcto. Acceso autorizado.")
+                        st.rerun()
+                    else:
+                        st.error("❌ PIN incorrecto. Intenta de nuevo.")
+            
+            with col_btn[1]:
+                if st.button("✕ Cancelar", use_container_width=True):
+                    st.session_state.wizard_pin_input = ""
+                    st.info("PIN cancelado.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        return
+
+    # PIN verificado, mostrar wizard normal
     st.markdown(
         '<div class="dashboard-card">'
         '<div class="section-title">🧙 Wizard</div>'

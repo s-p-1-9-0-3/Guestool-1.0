@@ -39,6 +39,7 @@ def init_state():
         "wizard_empresa_nombre": "",
         "wizard_empresa_id":     "",
         "wizard_df_limpio":      None,
+        "wizard_pin_verified":   False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
