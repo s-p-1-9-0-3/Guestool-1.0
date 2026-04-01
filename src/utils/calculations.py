@@ -16,18 +16,91 @@ def calcular_precio_rms_desde_objetivo(adr_objetivo: float, limpieza: float, noc
     return max(precio_rms, 0.0)
 
 
-def diagnosticar_forecast(yoy_adr_pct: Optional[float], adr_forecast: float, adr_recomendado: float) -> str:
-    """Diagnose forecast accuracy."""
+def diagnosticar_forecast(
+    yoy_adr_pct: Optional[float],
+    adr_forecast: float,
+    adr_recomendado: float,
+    ocupacion_2025: Optional[float] = None,
+    ocupacion_2026: Optional[float] = None,
+    los_2025: Optional[float] = None,
+    los_2026: Optional[float] = None,
+    dias_periodo: int = 30,
+) -> str:
+    """
+    Diagnose strategy viability based on total income projection.
+    
+    Compares historical data with forecast considering:
+    - Price changes (ADR)
+    - Demand changes (Occupancy)
+    - Stay duration changes (LOS)
+    - Total revenue impact
+    """
     if adr_forecast is None or adr_recomendado is None or adr_forecast <= 0:
-        return "Sin forecast"
+        return "Sin datos"
 
-    gap_pct = ((adr_recomendado / adr_forecast) - 1) * 100
+    # Default occupancy if not provided
+    occ_2025 = ocupacion_2025 if ocupacion_2025 and ocupacion_2025 > 0 else 50.0
+    occ_2026 = ocupacion_2026 if ocupacion_2026 and ocupacion_2026 > 0 else 50.0
+    
+    # Default LOS if not provided
+    los_2025_val = los_2025 if los_2025 and los_2025 > 0 else 3.0
+    los_2026_val = los_2026 if los_2026 and los_2026 > 0 else 3.0
 
-    if abs(gap_pct) <= 4:
-        return "Forecast correcto"
-    if gap_pct > 4:
-        return "Forecast bajo"
-    return "Forecast agresivo"
+    # Calculate revenue proxy (ADR × Occupancy as simplified metric)
+    revenue_proxy_2025 = (adr_forecast / 100) * occ_2025  # Simplified
+    revenue_proxy_2026 = adr_recomendado * (occ_2026 / 100)  # With recommended ADR
+    
+    # Calculate percentage changes
+    cambio_adr_pct = ((adr_recomendado / adr_forecast) - 1) * 100
+    cambio_occ_pct = occ_2026 - occ_2025
+    cambio_los_pct = ((los_2026_val / los_2025_val) - 1) * 100
+    cambio_ingresos_pct = ((revenue_proxy_2026 / revenue_proxy_2025) - 1) * 100 if revenue_proxy_2025 > 0 else 0
+
+    # DIAGNOSIS LOGIC - More nuanced
+    
+    # STRONG GROWTH SCENARIO
+    if cambio_ingresos_pct >= 8 and cambio_occ_pct >= 0:
+        return "✅ Estrategia ganadora: sube precio, ocupación estable/sube"
+    
+    if cambio_ingresos_pct >= 5 and cambio_occ_pct >= 1:
+        return "✅ Crecimiento sano: precio sube con demanda"
+    
+    # MODERATE GROWTH - SAFE
+    if cambio_ingresos_pct >= 2 and cambio_ingresos_pct < 5:
+        if cambio_los_pct >= -10:
+            return "💚 Crecimiento moderado y sostenible"
+        else:
+            return "⚠️ Crece poco, pero clientes se van antes"
+    
+    # STABLE / SLIGHT GROWTH
+    if cambio_ingresos_pct >= 0 and cambio_ingresos_pct < 2:
+        if cambio_adr_pct > 5 and cambio_occ_pct < -10:
+            return "💚 Precio sube, ocupación baja - Cambio de estrategia"
+        else:
+            return "💚 Estable, cambios mínimos"
+    
+    # DECLINE SCENARIOS
+    if cambio_ingresos_pct < 0:
+        # High price increase but demand collapses
+        if cambio_adr_pct > 15 and cambio_occ_pct < -15:
+            return "🔴 Precio muy alto, demanda colapsa - REVISAR"
+        
+        # Price drop doesn't help occupancy
+        if cambio_adr_pct < -10 and cambio_occ_pct < 5 and cambio_los_pct < -10:
+            return "🔴 Precio bajo Y se van antes - MALA estrategia"
+        
+        # General decline
+        if abs(cambio_adr_pct) < 10 and cambio_occ_pct < -15:
+            return "⚠️ Ocupación cae fuerte - Precio no compensa"
+        
+        if cambio_los_pct < -20 and cambio_adr_pct < 5:
+            return "⚠️ Clientes se quedan menos días - Baja rentabilidad"
+        
+        # Generic loss
+        return "🔴 Ingresos bajan - Ajusta estrategia"
+    
+    # Edge case
+    return "💚 Diagnóstico neutral"
 
 
 def calcular_rentabileitor_pro_2026_vs_2025(
@@ -144,8 +217,17 @@ def calcular_rentabileitor_pro_2026_vs_2025(
     precio_rms_conservador = calcular_precio_rms_desde_objetivo(adr_conservador, limpieza, noches, markup, descuento)
     precio_rms_agresivo = calcular_precio_rms_desde_objetivo(adr_agresivo, limpieza, noches, markup, descuento)
 
-    # Diagnose forecast
-    diagnostico = diagnosticar_forecast(((adr_2026_forecast / adr_2025) - 1) * 100, adr_2026_forecast, adr_optimo)
+    # Diagnose forecast - with full metrics
+    diagnostico = diagnosticar_forecast(
+        yoy_adr_pct=((adr_2026_forecast / adr_2025) - 1) * 100,
+        adr_forecast=adr_2026_forecast,
+        adr_recomendado=adr_optimo,
+        ocupacion_2025=ocupacion_2025,
+        ocupacion_2026=ocupacion_2026,
+        los_2025=los_2025,
+        los_2026=los_2026,
+        dias_periodo=30,
+    )
 
     return {
         "adr_conservador": adr_conservador,

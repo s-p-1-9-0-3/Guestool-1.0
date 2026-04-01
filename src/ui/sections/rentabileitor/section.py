@@ -627,12 +627,18 @@ def section_rentabileitor(
                     st.warning("⚠️ **Sin histórico**: Esta estimación se basa únicamente en datos actuales (crecimiento conservador del 5%).")
 
                 estado = resultado["diagnostico"]
-                if estado == "Forecast correcto":
-                    st.success(f"Diagnóstico: {estado}")
-                elif estado == "Forecast bajo":
-                    st.warning(f"Diagnóstico: {estado}")
+                
+                # Show diagnosis based on emoji prefix for better UX
+                if "✅" in estado:
+                    st.success(f"**{estado}**")
+                elif "🔴" in estado:
+                    st.error(f"**{estado}**")
+                elif "⚠️" in estado:
+                    st.warning(f"**{estado}**")
+                elif "💚" in estado:
+                    st.info(f"**{estado}**")
                 else:
-                    st.error(f"Diagnóstico: {estado}")
+                    st.info(f"**Diagnóstico:** {estado}")
 
                 st.write("### Resultado final")
 
