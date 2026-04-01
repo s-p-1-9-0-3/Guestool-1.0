@@ -15,6 +15,9 @@ from .data_processing import (
 from .display import (
     render_metrica_minimal,
 )
+from .section import (
+    section_rentabileitor,
+)
 
 __all__ = [
     # Calculations
@@ -28,4 +31,6 @@ __all__ = [
     "filtrar_apartamentos_por_empresa",
     # Display
     "render_metrica_minimal",
+    # Main section
+    "section_rentabileitor",
 ]

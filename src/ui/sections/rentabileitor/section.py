@@ -1,28 +1,22 @@
 """
-Sección Rentabileitor PRO - Análisis comparativo de PriceLabs 2025 vs 2026
+Componente principal Rentabileitor - Sección de análisis comparativo
 """
 import math
 from datetime import datetime
 import pandas as pd
 import streamlit as st
-from .rentabileitor import (
-    fuzzy_match,
-    filtrar_apartamentos_por_empresa,
+from .calculations import (
     safe_mean,
     calcular_adr_ocupados,
     calcular_ocupacion,
     calcular_revpar,
     calcular_cambio,
-    render_metrica_minimal,
 )
-from .rentabileitor import (
+from .data_processing import (
     fuzzy_match,
     filtrar_apartamentos_por_empresa,
-    safe_mean,
-    calcular_adr_ocupados,
-    calcular_ocupacion,
-    calcular_revpar,
-    calcular_cambio,
+)
+from .display import (
     render_metrica_minimal,
 )
 
