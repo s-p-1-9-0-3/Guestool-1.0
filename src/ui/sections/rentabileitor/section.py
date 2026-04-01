@@ -435,7 +435,6 @@ def section_rentabileitor(
         
         noches_manual_txt = st.text_input(
             "Estancia (noches)", 
-            value=st.session_state.get("rent_noches_manual", str(int(los_valor_elegido))),
             key="rent_noches_manual",
             disabled=not es_manual
         )
