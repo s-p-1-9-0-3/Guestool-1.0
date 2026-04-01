@@ -107,16 +107,8 @@ def section_rentabileitor(
                     st.write(f"**Apartamentos en CSV ({len(apartamentos_app)}):**")
                     st.write(sorted(list(apartamentos_app.keys())))
                 
-                hay_cambios = detectar_cambios_pricelabs(empresa_id)
-                if hay_cambios:
-                    if st.button("🔄 Recargar"):
-                        cargar_nuevos = True
-                else:
-                    if st.checkbox("Cargar nuevos", key="force_reload_pricelabs"):
-                        cargar_nuevos = True
-                
-                if not cargar_nuevos:
-                    # Usar los DataFrames directamente (ya están procesados)
+                # Usar los DataFrames cacheados automáticamente
+                if dfs_cached:
                     dfs_por_anyo = dfs_cached.copy()
             else:
                 st.info("Sin datos cargados")
@@ -340,21 +332,24 @@ def section_rentabileitor(
             label_visibility="collapsed"
         )
         
-        hoy = pd.to_datetime("2026-03-29")
+        hoy = datetime.now()
         hoy_date = hoy.date()
+        mes_actual = hoy.month
         
         if periodo_actual == "📅 Mes en curso":
-            start_date = pd.to_datetime(f"{year_actual}-03-01").date()
-            end_date = (pd.to_datetime(f"{year_actual}-03-01") + pd.offsets.MonthEnd(0)).date()
+            start_date = pd.to_datetime(f"{year_actual}-{mes_actual:02d}-01").date()
+            end_date = (pd.to_datetime(f"{year_actual}-{mes_actual:02d}-01") + pd.offsets.MonthEnd(0)).date()
         elif periodo_actual == "📅 Desde 1 de enero a hoy":
             start_date = pd.to_datetime(f"{year_actual}-01-01").date()
             end_date = hoy_date
         elif periodo_actual == "📅 Próximo mes":
-            start_date = pd.to_datetime(f"{year_actual}-04-01").date()
-            end_date = (pd.to_datetime(f"{year_actual}-04-01") + pd.offsets.MonthEnd(0)).date()
+            mes_proximo = (mes_actual % 12) + 1
+            start_date = pd.to_datetime(f"{year_actual}-{mes_proximo:02d}-01").date()
+            end_date = (pd.to_datetime(f"{year_actual}-{mes_proximo:02d}-01") + pd.offsets.MonthEnd(0)).date()
         elif periodo_actual == "📅 Mes anterior":
-            start_date = pd.to_datetime(f"{year_actual}-02-01").date()
-            end_date = (pd.to_datetime(f"{year_actual}-02-01") + pd.offsets.MonthEnd(0)).date()
+            mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
+            start_date = pd.to_datetime(f"{year_actual}-{mes_anterior:02d}-01").date()
+            end_date = (pd.to_datetime(f"{year_actual}-{mes_anterior:02d}-01") + pd.offsets.MonthEnd(0)).date()
         elif periodo_actual == "📊 Este año":
             start_date = pd.to_datetime(f"{year_actual}-01-01").date()
             end_date = pd.to_datetime(f"{year_actual}-12-31").date()
@@ -721,7 +716,8 @@ def section_rentabileitor(
 
                 st.write("### Resultado final")
 
-                rc1, rc2, rc3 = st.columns(3)
+                # 2 columnas centradas: Conservador y Óptimo
+                _, rc1, rc2, _ = st.columns([0.15, 1, 1, 0.15])
                 with rc1:
                     st.markdown(
                         f"""
@@ -744,19 +740,6 @@ def section_rentabileitor(
                             <div class="kpi-total">{resultado['adr_optimo']:,.2f}<span class="kpi-currency">€</span></div>
                             <div class="kpi-sub">RMS sugerido</div>
                             <div class="kpi-value">{resultado['precio_rms_optimo']:,.2f} €</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                with rc3:
-                    st.markdown(
-                        f"""
-                        <div class="kpi-card">
-                            <div class="kpi-title">Agresivo</div>
-                            <div class="kpi-sub">ADR 2026 recomendado</div>
-                            <div class="kpi-total">{resultado['adr_agresivo']:,.2f}<span class="kpi-currency">€</span></div>
-                            <div class="kpi-sub">RMS sugerido</div>
-                            <div class="kpi-value">{resultado['precio_rms_agresivo']:,.2f} €</div>
                         </div>
                         """,
                         unsafe_allow_html=True
