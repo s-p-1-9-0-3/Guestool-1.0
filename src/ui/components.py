@@ -664,7 +664,7 @@ def wizard_editar():
 # =========================================================
 def section_wizard():
     # PIN de acceso al Wizard
-    PIN_WIZARD = "1234"
+    PIN_WIZARD = "9375"
     
     # Si el PIN no está verificado, mostrar pantalla de login
     if not st.session_state.get("wizard_pin_verified", False):
